@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/assets/styles/global.css">
+  </head>
+  <body>
+    <div class="wrapper">
+      <div class="header">
+        <img class="header__logo" src="/assets/images/logo.svg">
+        <div class="header__inner">
+          <div class="header__date">
+            {{ date.toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" }) }}
+          </div>
+          <div class="header__title">
+            Item Shop Update
+          </div>
+        </div>
+      </div>
+      <div class="main">
+        {% for page in pages %}
+          <div class="page">
+            <div class="page__name">
+              {{ page.name }}
+            </div>
+            <div class="page__items">
+              {% for item in page.items %}
+                <div class="page__item item item--style{{ page.style }}">
+                  <img class="item__image" src="{{ item.imageUrl }}">
+                  <div class="item__inner">
+                    <div class="item__name">
+                      {{ item.name }}
+                    </div>
+                    <div class="item__price">
+                      {% if item.price.currency === "CoreCredit" %}
+                        <img class="item__priceCurrency" src="/assets/images/currency-icon.png">
+                        <div class="item__priceAmount">
+                          {{ item.price.amount.toLocaleString("en-US") }}
+                        </div>
+                      {% else %}
+                        <div class="item__priceAmount">
+                          {{ item.price.amount.toLocaleString("en-US", { style: "currency", currency: item.price.currency }) }}
+                        </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% else %}
+          <div class="emptyMessage">
+            <div class="emptyMessage__headline">
+              The store is currently empty
+            </div>
+            <div class="emptyMessage__message">
+              Please come back later
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="footer">
+        Via @CoreGamesShop &nbsp;&bullet;&nbsp; Made by @0xSeldszar
+      </div>
+    </div>
+  </body>
+</html>

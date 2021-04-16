@@ -1,0 +1,11 @@
+# Dependency directory
+node_modules
+
+# Data directory
+data
+
+# Log files
+*.log
+
+# Environment files
+.env*

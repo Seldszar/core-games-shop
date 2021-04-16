@@ -1,0 +1,11 @@
+{
+  "root": true,
+  "parserOptions": {
+    "sourceType": "module",
+    "ecmaVersion": 2019
+  },
+  "extends": [
+    "plugin:prettier/recommended",
+    "prettier"
+  ]
+}
