@@ -1,5 +1,5 @@
+import * as Sentry from "@sentry/node";
 import cacache from "cacache";
-import captureWebsite from "capture-website";
 import colors from "colors";
 import dotenv from "dotenv";
 import express from "express";
@@ -8,6 +8,8 @@ import got from "got";
 import hasha from "hasha";
 import indentString from "indent-string";
 import nunjucks from "nunjucks";
+import pRetry from "p-retry";
+import puppeteer from "puppeteer";
 import stream from "stream";
 import Twitter from "twitter-lite";
 import util from "util";
@@ -24,6 +26,12 @@ dotenv.config({
 
 nunjucks.configure({
   noCache: true,
+});
+
+Sentry.init({
+  enabled: process.env.NODE_ENV === "production",
+  dsn: process.env.SENTRY_DNS,
+  tracesSampleRate: 1.0,
 });
 
 const createFormat = (colorize) => {
@@ -168,13 +176,34 @@ const servePage = async (context, handler) => {
       const url = `http://localhost:${server.address().port}`;
 
       try {
-        await handler(url);
+        resolve(await handler(url));
       } catch (error) {
         reject(error);
       }
 
-      server.close(() => resolve());
+      server.close();
     });
+  });
+};
+
+const capturePage = (state, viewport) => {
+  return servePage(state, async (url) => {
+    let browser;
+
+    try {
+      browser = await puppeteer.launch({
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      });
+
+      const page = await browser.newPage();
+
+      await page.setViewport({ height: 0, ...viewport });
+      await page.goto(url, { waitUntil: "networkidle0" });
+
+      return await page.screenshot({ fullPage: true });
+    } finally {
+      await browser.close();
+    }
   });
 };
 
@@ -263,35 +292,37 @@ const checkStoreUpdate = async () => {
 
     logger.info("Changes detected, generating image...");
 
-    await servePage(state, async (url) => {
-      const image = await captureWebsite.base64(url, {
-        scaleFactor: 1.5,
-        fullPage: true,
-        width: 1054,
-        launchOptions: {
-          args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    await pRetry(
+      async () => {
+        const buffer = await capturePage(state, {
+          deviceScaleFactor: 1.5,
+          width: 1054,
+        });
+
+        logger.debug("Uploading image to Twitter...");
+
+        const response = await twitter.upload.post("media/upload", {
+          media_data: buffer.toString("base64"),
+        });
+
+        logger.debug("Sending new Twitter status...");
+
+        const dateString = state.date.toLocaleString("en-US", {
+          dateStyle: "long",
+          timeStyle: "short",
+        });
+
+        await twitter.api.post("statuses/update", {
+          media_ids: response.media_id_string,
+          status: `#CoreGames Item Shop Update (${dateString})`,
+        });
+      },
+      {
+        onFailedAttempt() {
+          logger.error("Failed to complete the store update, retrying...");
         },
-      });
-
-      logger.debug("Uploading image to Twitter...");
-
-      const response = await twitter.upload.post("media/upload", {
-        media_data: image,
-      });
-
-      logger.debug("Sending new Twitter status...");
-
-      await twitter.api.post("statuses/update", {
-        media_ids: response.media_id_string,
-        status: `#CoreGames Item Shop Update - ${state.date.toLocaleString(
-          "en-US",
-          {
-            dateStyle: "long",
-            timeStyle: "short",
-          }
-        )}`,
-      });
-    });
+      }
+    );
 
     logger.debug("Saving store state...");
 
@@ -299,6 +330,8 @@ const checkStoreUpdate = async () => {
 
     logger.info("Store update check done");
   } catch (error) {
+    Sentry.captureException(error);
+
     logger.error(
       "An error occured while checking for the store updates:",
       error
