@@ -222,113 +222,122 @@ let timeoutHandle;
 const checkStoreUpdate = async () => {
   logger.info("Checking for store updates...");
 
+  const state = {
+    date: new Date(),
+    pages: [],
+  };
+
+  logger.debug("Fetching store pages...");
+
+  const {
+    body: { pageSummaries },
+  } = await api.get("store/pages");
+
+  for (const { pageId } of pageSummaries) {
+    logger.debug("Fetching store page %s...", pageId);
+
+    const {
+      body: {
+        page: { bundles, pageName, pageStyle },
+      },
+    } = await api.get(`store/pages/${pageId}`);
+
+    if (pageStyle === "Token") {
+      continue;
+    }
+
+    const page = {
+      id: pageId,
+      name: pageName,
+      style: pageStyle,
+      items: await Promise.all(
+        bundles.map(async (bundle) => {
+          const { priceInVirtualTokens } = bundle;
+
+          const price = {
+            currency: priceInVirtualTokens.type,
+            amount: priceInVirtualTokens.amount,
+          };
+
+          if (price.currency === "Unknown") {
+            price.currency = bundle.currency;
+            price.amount = bundle.price;
+          }
+
+          return {
+            id: bundle.id,
+            name: bundle.name,
+            imageUrl: await cacheMedia(bundle.imageUrl),
+            price,
+          };
+        })
+      ),
+    };
+
+    state.pages.push(page);
+  }
+
+  logger.debug("Comparing store states...");
+
+  const oldState = await getState();
+  const sameState = equal(state.pages, oldState.pages);
+
+  logger.info(
+    sameState
+      ? "No store changes, skipping..."
+      : "Store changes detected, generating image..."
+  );
+
+  if (sameState) {
+    return;
+  }
+
+  await pRetry(
+    async () => {
+      const buffer = await capturePage(state, {
+        deviceScaleFactor: 1.5,
+        width: 1054,
+      });
+
+      logger.debug("Uploading image to Twitter...");
+
+      const response = await twitter.upload.post("media/upload", {
+        media_data: buffer.toString("base64"),
+      });
+
+      logger.debug("Sending new Twitter status...");
+
+      const dateString = state.date.toLocaleString("en-US", {
+        dateStyle: "long",
+        timeStyle: "short",
+      });
+
+      await twitter.api.post("statuses/update", {
+        media_ids: response.media_id_string,
+        status: `#CoreGames Item Shop Update (${dateString})`,
+      });
+    },
+    {
+      onFailedAttempt() {
+        logger.error("Failed to complete the store update, retrying...");
+      },
+    }
+  );
+
+  logger.debug("Saving store state...");
+
+  await cacache.put(CACHE_PATH, "store:state", JSON.stringify(state));
+
+  logger.info("Store update check done");
+};
+
+const scheduleStoreUpdate = async () => {
   if (timeoutHandle) {
     clearTimeout(timeoutHandle);
   }
 
   try {
-    const state = {
-      date: new Date(),
-      pages: [],
-    };
-
-    logger.debug("Fetching store pages...");
-
-    const {
-      body: { pageSummaries },
-    } = await api.get("store/pages");
-
-    for (const { pageId } of pageSummaries) {
-      logger.debug("Fetching store page %s...", pageId);
-
-      const {
-        body: {
-          page: { bundles, pageName, pageStyle },
-        },
-      } = await api.get(`store/pages/${pageId}`);
-
-      if (pageStyle === "Token") {
-        continue;
-      }
-
-      const page = {
-        id: pageId,
-        name: pageName,
-        style: pageStyle,
-        items: await Promise.all(
-          bundles.map(async (bundle) => {
-            const { priceInVirtualTokens } = bundle;
-
-            const price = {
-              currency: priceInVirtualTokens.type,
-              amount: priceInVirtualTokens.amount,
-            };
-
-            if (price.currency === "Unknown") {
-              price.currency = bundle.currency;
-              price.amount = bundle.price;
-            }
-
-            return {
-              id: bundle.id,
-              name: bundle.name,
-              imageUrl: await cacheMedia(bundle.imageUrl),
-              price,
-            };
-          })
-        ),
-      };
-
-      state.pages.push(page);
-    }
-
-    logger.debug("Comparing store states...");
-
-    if (equal(state.pages, (await getState()).pages)) {
-      logger.info("No store changes, skipping...");
-
-      return;
-    }
-
-    logger.info("Changes detected, generating image...");
-
-    await pRetry(
-      async () => {
-        const buffer = await capturePage(state, {
-          deviceScaleFactor: 1.5,
-          width: 1054,
-        });
-
-        logger.debug("Uploading image to Twitter...");
-
-        const response = await twitter.upload.post("media/upload", {
-          media_data: buffer.toString("base64"),
-        });
-
-        logger.debug("Sending new Twitter status...");
-
-        const dateString = state.date.toLocaleString("en-US", {
-          dateStyle: "long",
-          timeStyle: "short",
-        });
-
-        await twitter.api.post("statuses/update", {
-          media_ids: response.media_id_string,
-          status: `#CoreGames Item Shop Update (${dateString})`,
-        });
-      },
-      {
-        onFailedAttempt() {
-          logger.error("Failed to complete the store update, retrying...");
-        },
-      }
-    );
-
-    logger.debug("Saving store state...");
-
-    await cacache.put(CACHE_PATH, "store:state", JSON.stringify(state));
-
-    logger.info("Store update check done");
+    await checkStoreUpdate();
   } catch (error) {
     Sentry.captureException(error);
 
@@ -338,7 +347,7 @@ const checkStoreUpdate = async () => {
     );
   }
 
-  timeoutHandle = setTimeout(checkStoreUpdate, CHECK_INTERVAL);
+  timeoutHandle = setTimeout(scheduleStoreUpdate, CHECK_INTERVAL);
 };
 
-checkStoreUpdate();
+scheduleStoreUpdate();
