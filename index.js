@@ -120,7 +120,7 @@ const cacheMedia = async (url) => {
   const key = hasha(url);
 
   try {
-    await cacache.get(CACHE_PATH, key);
+    await cacache.get(CACHE_PATH, `media:${key}`);
   } catch {
     await pipeline(
       got.stream(url),
@@ -153,13 +153,17 @@ const servePage = async (context, handler) => {
 
   app.use(express.static("public"));
 
-  app.get("/media/:key", async (request, response) => {
+  app.get("/media/:key", async (request, response, next) => {
     try {
       await pipeline(
         cacache.get.stream(CACHE_PATH, `media:${request.params.key}`),
         response
       );
-    } catch {
+    } catch (error) {
+      if (response.headersSent) {
+        return next(error);
+      }
+
       response.sendStatus(404);
     }
   });
@@ -220,6 +224,8 @@ const twitter = {
 let timeoutHandle;
 
 const checkStoreUpdate = async () => {
+  await cacache.verify(CACHE_PATH);
+
   logger.info("Checking for store updates...");
 
   const state = {
