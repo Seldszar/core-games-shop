@@ -192,7 +192,7 @@ const capturePage = (state, viewport) => {
 
     try {
       browser = await puppeteer.launch({
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        args: ["--disable-setuid-sandbox", "--no-sandbox"],
       });
 
       const page = await browser.newPage();
