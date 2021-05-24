@@ -16,7 +16,7 @@ import util from "util";
 import winston from "winston";
 
 const CACHE_PATH = "data/cache";
-const CHECK_INTERVAL = 3600000;
+const CHECK_INTERVAL = 900000;
 
 const pipeline = util.promisify(stream.pipeline);
 
@@ -301,7 +301,6 @@ const checkStoreUpdate = async () => {
   await pRetry(
     async () => {
       const buffer = await capturePage(state, {
-        deviceScaleFactor: 1.5,
         width: 1054,
       });
 
