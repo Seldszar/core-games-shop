@@ -216,11 +216,6 @@ const api = got.extend({
   responseType: "json",
 });
 
-const twitter = {
-  api: newTwitterClient("api"),
-  upload: newTwitterClient("upload"),
-};
-
 let timeoutHandle;
 
 const checkStoreUpdate = async () => {
@@ -297,6 +292,11 @@ const checkStoreUpdate = async () => {
   if (sameState) {
     return;
   }
+
+  const twitter = {
+    api: newTwitterClient("api"),
+    upload: newTwitterClient("upload"),
+  };
 
   await pRetry(
     async () => {
