@@ -34,7 +34,12 @@
                     </div>
                     <div class="item__price">
                       {% if item.price.currency === "CoreCredit" %}
-                        <img class="item__priceCurrency" src="/assets/images/currency-icon.png">
+                        <img class="item__priceCurrency" src="/assets/images/core-credit.png">
+                        <div class="item__priceAmount">
+                          {{ item.price.amount.toLocaleString("en-US") }}
+                        </div>
+                      {% elif item.price.currency === "RewardPoints" %}
+                        <img class="item__priceCurrency" src="/assets/images/reward-points.png">
                         <div class="item__priceAmount">
                           {{ item.price.amount.toLocaleString("en-US") }}
                         </div>
