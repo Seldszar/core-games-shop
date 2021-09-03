@@ -201,10 +201,22 @@ const capturePage = (state, viewport) => {
 
       const page = await browser.newPage();
 
-      await page.setViewport({ height: 0, ...viewport });
-      await page.goto(url, { waitUntil: "networkidle0" });
+      await page.setViewport({
+        height: 0,
+        ...viewport,
+      });
 
-      return await page.screenshot({ fullPage: true });
+      const response = await page.goto(url, {
+        waitUntil: "networkidle0",
+      });
+
+      if (!response.ok()) {
+        throw new Error("Error during the page capture");
+      }
+
+      return await page.screenshot({
+        fullPage: true,
+      });
     } finally {
       await browser.close();
     }
@@ -301,7 +313,7 @@ const checkStoreUpdate = async () => {
   await pRetry(
     async () => {
       const buffer = await capturePage(state, {
-        width: 1054,
+        width: 1480,
       });
 
       logger.debug("Uploading image to Twitter...");
@@ -314,7 +326,6 @@ const checkStoreUpdate = async () => {
 
       const dateString = state.date.toLocaleString("en-US", {
         dateStyle: "long",
-        timeStyle: "short",
       });
 
       await twitter.api.post("statuses/update", {

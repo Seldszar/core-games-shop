@@ -133,7 +133,7 @@ body {
 }
 
 .item__inner::before {
-  background-image: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.75));
+  background-image: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.5));
   border-radius: 0 0 4px 4px;
   bottom: 0;
   content: "";
@@ -146,7 +146,7 @@ body {
 
 .item__name,
 .item__price {
-  filter: drop-shadow(0 0 6px #000);
+  filter: drop-shadow(0 0 1px #1a1e26) drop-shadow(0 0 2px #1a1e26) drop-shadow(0 0 8px #1a1e26);
   position: relative;
 }
 
@@ -175,8 +175,17 @@ body {
 
 .footer {
   color: #4683d2;
+  display: flex;
   font-family: Roboto;
   font-size: 12px;
-  padding: 0 10px 10px;
-  text-align: center;
+  justify-content: space-between;
+  padding: 0 30px 10px;
+}
+
+.footer-left {
+  align-self: flex-start;
+}
+
+.footer-right {
+  align-self: flex-end;
 }
