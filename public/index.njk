@@ -24,9 +24,9 @@
             <div class="page__name">
               {{ page.name }}
             </div>
-            <div class="page__items">
+            <div class="page__items page__items--style{{ page.style }}">
               {% for item in page.items %}
-                <div class="page__item item item--style{{ page.style }}">
+                <div class="page__item item">
                   <img class="item__image" src="{{ item.imageUrl }}">
                   <div class="item__inner">
                     <div class="item__name">

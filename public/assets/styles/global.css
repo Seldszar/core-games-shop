@@ -102,13 +102,13 @@ body {
 }
 
 .page__items {
-  display: flex;
-  flex-flow: wrap;
-  margin: -1px;
+  display: grid;
+  grid-gap: 2px;
+  grid-template-columns: repeat(8, 1fr);
 }
 
-.page__item {
-  margin: 1px;
+.page__items--styleFounderPack {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .item {
@@ -120,8 +120,7 @@ body {
 
 .item__image {
   display: block;
-  height: 262px;
-  width: 154px;
+  width: 100%;
 }
 
 .item__inner {
@@ -167,10 +166,6 @@ body {
 
 .item__priceAmount {
   color: #5fcc29;
-}
-
-.item--styleFounderPack .item__image {
-  width: 462px;
 }
 
 .footer {
