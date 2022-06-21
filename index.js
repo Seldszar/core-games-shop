@@ -260,7 +260,6 @@ const checkStoreUpdate = async () => {
     }
 
     const page = {
-      id: pageId,
       name: pageName,
       style: pageStyle,
       items: await Promise.all(
@@ -278,7 +277,6 @@ const checkStoreUpdate = async () => {
           }
 
           return {
-            id: bundle.id,
             name: bundle.name,
             imageUrl: await cacheMedia(bundle.imageUrl),
             price,
